@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
     print("🔄 Shutting down ProductiveCasino API")
 
 app = FastAPI(
-    title="ProductiveCasino API",
+    title="Produtividade-Casino API",
     description="Gamified productivity system with betting mechanics",
     version="1.0.0",
     lifespan=lifespan
