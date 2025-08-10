@@ -1,1 +1,93 @@
+# Arquivos de ambiente e secrets
 .env
+.env.local
+.env.production
+*.env
+
+# Credenciais do Supabase
+supabase/.env
+config/secrets.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+casino_env/
+.venv/
+
+# IDE e Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Flask
+instance/
+.webassets-cache
+*.log
+
+# FastAPI
+.cache/
+
+# Jupyter Notebooks (caso use para análise)
+.ipynb_checkpoints
+
+# pytest
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Databases locais (quando migrar para PostgreSQL)
+*.db
+*.sqlite3
+postgres_data/
+
+# Docker (para fase futura)
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Node modules (caso use algum build tool no futuro)
+node_modules/
