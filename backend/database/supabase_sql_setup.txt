@@ -1,0 +1,178 @@
+-- =====================================
+-- SUPABASE SQL SETUP
+-- Execute no SQL Editor do Supabase
+-- =====================================
+
+-- 1. Tabela de Usuários
+CREATE TABLE users (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 2. Tabela de Carteiras (Wallets)
+CREATE TABLE wallets (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    balance INTEGER DEFAULT 0 NOT NULL CHECK (balance >= 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    
+    -- Constraint: Um wallet por usuário
+    UNIQUE(user_id)
+);
+
+-- 3. Tabela de Atividades
+CREATE TABLE activities (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    activity_type VARCHAR(50) NOT NULL,
+    coins_earned INTEGER NOT NULL CHECK (coins_earned > 0),
+    duration_minutes INTEGER,
+    notes TEXT,
+    streak_days INTEGER DEFAULT 0,
+    multiplier_applied DECIMAL(3,2) DEFAULT 1.0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 4. Tabela de Apostas (para funcionalidade futura)
+CREATE TABLE bets (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    coins_bet INTEGER NOT NULL CHECK (coins_bet > 0),
+    odds DECIMAL(5,2) NOT NULL CHECK (odds > 1.0),
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'won', 'lost', 'cancelled')),
+    deadline TIMESTAMP WITH TIME ZONE NOT NULL,
+    result_verified_at TIMESTAMP WITH TIME ZONE,
+    coins_won INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- =====================================
+-- INDEXES para Performance
+-- =====================================
+
+-- Index para consultas por usuário (mais comum)
+CREATE INDEX idx_wallets_user_id ON wallets(user_id);
+CREATE INDEX idx_activities_user_id ON activities(user_id);
+CREATE INDEX idx_activities_created_at ON activities(created_at);
+CREATE INDEX idx_bets_user_id ON bets(user_id);
+CREATE INDEX idx_bets_status ON bets(status);
+
+-- Index composto para consultas de atividades recentes por usuário
+CREATE INDEX idx_activities_user_date ON activities(user_id, created_at DESC);
+
+-- =====================================
+-- RLS (Row Level Security) - SEGURANÇA
+-- =====================================
+
+-- Habilitar RLS em todas as tabelas
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bets ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de Segurança: Usuários só veem seus próprios dados
+
+-- Users: Usuários podem ver e atualizar apenas seu próprio perfil
+CREATE POLICY "Users can view own profile" ON users
+    FOR SELECT USING (auth.uid()::text = id::text);
+
+CREATE POLICY "Users can update own profile" ON users
+    FOR UPDATE USING (auth.uid()::text = id::text);
+
+-- Wallets: Usuários só acessam sua própria carteira
+CREATE POLICY "Users can view own wallet" ON wallets
+    FOR SELECT USING (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can update own wallet" ON wallets
+    FOR UPDATE USING (auth.uid()::text = user_id::text);
+
+-- Activities: Usuários só veem suas próprias atividades
+CREATE POLICY "Users can view own activities" ON activities
+    FOR SELECT USING (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can insert own activities" ON activities
+    FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+
+-- Bets: Usuários só acessam suas próprias apostas
+CREATE POLICY "Users can view own bets" ON bets
+    FOR SELECT USING (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can insert own bets" ON bets
+    FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can update own bets" ON bets
+    FOR UPDATE USING (auth.uid()::text = user_id::text);
+
+-- =====================================
+-- FUNCTIONS & TRIGGERS para Automação
+-- =====================================
+
+-- Função para atualizar updated_at automaticamente
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = TIMEZONE('utc'::text, NOW());
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Triggers para atualização automática de updated_at
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_wallets_updated_at BEFORE UPDATE ON wallets
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================
+-- DADOS DE TESTE (Opcional)
+-- =====================================
+
+-- Inserir usuário de teste (apenas para desenvolvimento)
+-- REMOVER em produção!
+INSERT INTO users (id, email, password_hash) VALUES 
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'test@casino.com',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4OU.9E5P3m' -- password: test123
+);
+
+-- Criar wallet para usuário teste
+INSERT INTO wallets (user_id, balance) VALUES 
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 500);
+
+-- Atividades de exemplo
+INSERT INTO activities (user_id, activity_type, coins_earned, duration_minutes) VALUES 
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'pomodoro_25min', 50, 25),
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'exercise_30min', 75, 30);
+
+-- =====================================
+-- CONSULTAS ÚTEIS PARA DEBUG
+-- =====================================
+
+-- Ver todos os usuários e seus saldos
+SELECT 
+    u.email,
+    w.balance,
+    COUNT(a.id) as total_activities
+FROM users u
+LEFT JOIN wallets w ON u.id = w.user_id
+LEFT JOIN activities a ON u.id = a.user_id
+GROUP BY u.id, u.email, w.balance;
+
+-- Ver atividades recentes com detalhes
+SELECT 
+    u.email,
+    a.activity_type,
+    a.coins_earned,
+    a.streak_days,
+    a.multiplier_applied,
+    a.created_at
+FROM activities a
+JOIN users u ON a.user_id = u.id
+ORDER BY a.created_at DESC
+LIMIT 10;
