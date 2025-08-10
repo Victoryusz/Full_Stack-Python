@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Criar Aposta{% endblock %}
+
+{% block content %}
+    <h2>Criar Nova Aposta</h2>
+    <form method="post">
+        <label for="evento">Evento:</label>
+        <input type="text" id="evento" name="evento" required>
+        <br>
+        <label for="valor">Valor:</label>
+        <input type="number" id="valor" name="valor" step="0.01" required>
+        <br>
+        <button type="submit">Apostar</button>
+    </form>
+{% endblock %}
