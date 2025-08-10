@@ -1,5 +1,4 @@
 # Arquivos de ambiente e secrets
-.env
 .env.local
 .env.production
 *.env
